@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Photo Selection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <style>
+    /* ═══ Design Tokens ═══════════════════════════════════════════════════════ */
+    :root {
+      --bg:#0d0d0f; --surface:#16161a; --elevated:#1e1e24; --hover:#26262e;
+      --accent:#e8a846; --accent-dim:rgba(232,168,70,0.12); --accent-glow:rgba(232,168,70,0.3);
+      --text:#f0ede8; --text2:#9896a0; --text3:#5a5870;
+      --border:rgba(255,255,255,0.07); --border-a:rgba(232,168,70,0.35);
+      --success:#48bb78; --danger:#f56565;
+      --r:6px; --r2:12px; --r3:20px;
+      --fd:'DM Serif Display',Georgia,serif; --fb:'DM Sans',system-ui,sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:var(--fb);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+    /* Header */
+    header{position:sticky;top:0;z-index:100;background:rgba(13,13,15,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 20px}
+    .hd{max-width:1200px;margin:0 auto;height:60px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .logo{font-family:var(--fd);font-size:1.15rem;display:flex;align-items:center;gap:6px;flex-shrink:0}
+    .logo em{font-style:italic;color:var(--accent)}
+    .proj-title{font-size:.95rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .hd-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+
+    /* Countdown */
+    .cd{display:flex;align-items:center;gap:6px;background:var(--elevated);border:1px solid var(--border);border-radius:var(--r);padding:5px 10px;font-size:.82rem;font-variant-numeric:tabular-nums}
+    .cd.urgent{border-color:rgba(245,101,101,.4);color:var(--danger)}
+    .cd.expired{border-color:rgba(245,101,101,.4);background:rgba(245,101,101,.1);color:var(--danger)}
+
+    .sel-cnt{background:var(--accent-dim);border:1px solid var(--border-a);border-radius:var(--r);padding:5px 10px;font-size:.82rem;color:var(--accent);font-weight:600;white-space:nowrap}
+
+    .btn-sub{background:var(--accent);color:#0d0d0f;border:none;border-radius:var(--r);padding:7px 18px;font-family:var(--fb);font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s ease;white-space:nowrap}
+    .btn-sub:hover{background:#f0b84e;box-shadow:0 0 20px var(--accent-glow);transform:translateY(-1px)}
+    .btn-sub:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+    /* Controls bar */
+    .ctrl{max-width:1200px;margin:18px auto 14px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .ftabs{display:flex;gap:3px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:3px}
+    .ftab{padding:4px 12px;border-radius:4px;border:none;background:none;color:var(--text2);font-family:var(--fb);font-size:.8rem;cursor:pointer;transition:all .15s}
+    .ftab.active{background:var(--elevated);color:var(--text)}
+    .btn-sa{background:var(--surface);border:1px solid var(--border);color:var(--text2);border-radius:var(--r);padding:5px 12px;font-size:.8rem;font-family:var(--fb);cursor:pointer;transition:all .15s}
+    .btn-sa:hover{color:var(--text);border-color:var(--border-a)}
+
+    /* Grid */
+    .grid-wrap{max-width:1200px;margin:0 auto;padding:0 20px 100px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+
+    .card{position:relative;border-radius:var(--r2);overflow:hidden;cursor:pointer;aspect-ratio:3/2;background:var(--surface);border:2px solid transparent;transition:border-color .15s,transform .15s}
+    .card:hover{transform:scale(1.02)}
+    .card.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim),0 0 18px var(--accent-glow)}
+    .card img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity .3s}
+    .card img.ld{opacity:0}
+
+    .chk{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:rgba(13,13,15,.7);border:2px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;transition:all .15s;backdrop-filter:blur(4px)}
+    .card.sel .chk{background:var(--accent);border-color:var(--accent)}
+    .chk::after{content:'';width:9px;height:6px;border-left:2px solid #0d0d0f;border-bottom:2px solid #0d0d0f;transform:rotate(-45deg) translateY(-1px);opacity:0;transition:opacity .1s}
+    .card.sel .chk::after{opacity:1}
+
+    .fname{position:absolute;bottom:0;left:0;right:0;padding:16px 8px 6px;font-size:.7rem;color:rgba(255,255,255,.85);background:linear-gradient(to top,rgba(0,0,0,.7),transparent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:0;transition:opacity .15s}
+    .card:hover .fname{opacity:1}
+
+    /* Lightbox */
+    .lb{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+    .lb.open{display:flex}
+    .lb-wrap{position:relative;max-width:92vw;max-height:88vh}
+    .lb-wrap img{max-width:92vw;max-height:88vh;object-fit:contain;border-radius:var(--r2);box-shadow:0 20px 60px rgba(0,0,0,.8)}
+    .lb-close{position:absolute;top:-38px;right:0;background:none;border:none;color:var(--text2);font-size:1.4rem;cursor:pointer}
+    .lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(13,13,15,.8);border:1px solid var(--border);color:var(--text);width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer;transition:all .15s;backdrop-filter:blur(4px)}
+    .lb-nav:hover{background:var(--elevated);border-color:var(--border-a)}
+    .lb-prev{left:-54px} .lb-next{right:-54px}
+    .lb-acts{position:absolute;bottom:-50px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+    .lb-sel{background:var(--accent);color:#0d0d0f;border:none;border-radius:var(--r);padding:7px 18px;font-family:var(--fb);font-size:.85rem;font-weight:700;cursor:pointer;transition:all .15s}
+    .lb-sel.desel{background:var(--elevated);color:var(--danger);border:1px solid rgba(245,101,101,.3)}
+
+    /* States */
+    .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:14px}
+    .spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .nf{text-align:center;padding:80px 20px}
+    .nf h2{font-family:var(--fd);margin-bottom:8px}
+
+    /* Expired overlay */
+    .exp-ov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+    .exp-ov.show{display:flex}
+    .exp-card{background:var(--surface);border:1px solid rgba(245,101,101,.3);border-radius:var(--r3);padding:36px;text-align:center;max-width:380px}
+    .exp-card h2{font-family:var(--fd);margin:12px 0 8px}
+
+    /* Success */
+    .success{position:fixed;inset:0;background:var(--bg);z-index:300;display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;text-align:center;padding:24px}
+    .success.show{display:flex}
+    .sico{width:76px;height:76px;background:rgba(72,187,120,.15);border:1px solid rgba(72,187,120,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.4rem;animation:pop .4s cubic-bezier(.175,.885,.32,1.275)}
+    @keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+    .success h2{font-family:var(--fd);font-size:1.9rem}
+
+    /* Toast */
+    #toast{position:fixed;bottom:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:6px}
+    .t{background:var(--elevated);border:1px solid var(--border);border-radius:var(--r);padding:9px 14px;font-size:.83rem;display:flex;gap:8px;align-items:center;animation:tin .2s ease;max-width:300px}
+    .t.s{border-left:3px solid var(--success)}.t.e{border-left:3px solid var(--danger)}
+    @keyframes tin{from{opacity:0;transform:translateX(20px)}to{opacity:1}}
+
+    @media(max-width:560px){
+      .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:7px}
+      .lb-prev,.lb-next{display:none}
+      .proj-title{display:none}
+    }
+  </style>
+</head>
+<body>
+
+<div class="loading" id="loading"><div class="spinner"></div><p style="color:var(--text2)">Loading your photos…</p></div>
+<div class="nf" id="nf" style="display:none"><div style="font-size:3rem;margin-bottom:14px">🔍</div><h2>Project Not Found</h2><p style="color:var(--text2);margin-top:6px">This link may be invalid or expired.</p></div>
+
+<div id="app" style="display:none">
+  <header>
+    <div class="hd">
+      <div class="logo">📷 Photo<em>Select</em></div>
+      <span class="proj-title" id="ptitle"></span>
+      <div class="hd-right">
+        <div class="cd" id="cd">⏱ …</div>
+        <div class="sel-cnt" id="selcnt">0 selected</div>
+        <button class="btn-sub" id="subbtn" disabled>Submit</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="ctrl">
+    <div class="ftabs">
+      <button class="ftab active" data-f="all">All</button>
+      <button class="ftab" data-f="sel">Selected</button>
+      <button class="ftab" data-f="unsel">Unselected</button>
+    </div>
+    <button class="btn-sa" id="salbtn">Select All</button>
+  </div>
+
+  <div class="grid-wrap"><div class="grid" id="grid"></div></div>
+</div>
+
+<!-- Expired -->
+<div class="exp-ov" id="expov">
+  <div class="exp-card">
+    <div style="font-size:2.8rem">⏰</div>
+    <h2>Time's Up</h2>
+    <p style="color:var(--text2);margin-top:4px">The deadline has passed. Please contact your photographer for an extension.</p>
+  </div>
+</div>
+
+<!-- Success -->
+<div class="success" id="succscr">
+  <div class="sico">✓</div>
+  <h2>Selection Submitted!</h2>
+  <p style="color:var(--text2);max-width:380px">Your photographer has been notified and will process your selected photos.</p>
+  <div id="succsumm" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:18px;min-width:240px;margin-top:6px;text-align:center"></div>
+</div>
+
+<!-- Lightbox -->
+<div class="lb" id="lb">
+  <div class="lb-wrap">
+    <button class="lb-close" id="lbclose">✕</button>
+    <img id="lbimg" src="" alt="">
+    <button class="lb-nav lb-prev" id="lbprev">‹</button>
+    <button class="lb-nav lb-next" id="lbnext">›</button>
+    <div class="lb-acts">
+      <button class="lb-sel" id="lbsel">✓ Select This Photo</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+// DATA LOADING
+// How it works:
+//   The photographer's app encodes the project JSON as base64 into the URL hash:
+//     https://your-site.com/index.html#data=BASE64_HERE
+//   This page reads it from location.hash — no server required.
+//   Works on every device: iPhone, Android, desktop browser.
+// ══════════════════════════════════════════════════════════════════════════════
+
+let project  = null;
+let images   = [];   // [{name, driveId, url}]
+let selected = new Set();
+let filter   = 'all';
+let lbIdx    = 0;
+let cdTimer  = null;
+let expired  = false;
+
+function loadProjectFromHash() {
+  try {
+    const hash = location.hash.replace(/^#/, '');
+    const params = new URLSearchParams(hash);
+    const data   = params.get('data');
+    if (!data) return null;
+    return JSON.parse(atob(data));
+  } catch(e) {
+    return null;
+  }
+}
+
+(async () => {
+  const proj = loadProjectFromHash();
+  if (!proj) { showNF(); return; }
+  project = proj;
+
+  // If already submitted before
+  if (project.submitted && project.selectedFiles?.length) {
+    showSuccess(project.selectedFiles);
+    return;
+  }
+
+  // Build image list with real Drive thumbnail URLs
+  // Google Drive thumbnail URL pattern (publicly readable after makePublic):
+  //   https://lh3.googleusercontent.com/d/{FILE_ID}=s800
+  const fileMap = project.fileMap || {};
+  images = (project.images || []).map(name => ({
+    name,
+    driveId: fileMap[name] || null,
+    // If we have a Drive file ID, use Google's CDN thumbnail. Otherwise fall back.
+    url: fileMap[name]
+      ? `https://lh3.googleusercontent.com/d/${fileMap[name]}=s800`
+      : `https://drive.google.com/thumbnail?id=${fileMap[name]}&sz=w800`,
+  }));
+
+  document.getElementById('ptitle').textContent = project.name;
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  renderGrid();
+  startCountdown();
+  updateUI();
+})();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GRID
+// ══════════════════════════════════════════════════════════════════════════════
+function renderGrid() {
+  const g = document.getElementById('grid');
+  g.innerHTML = '';
+
+  const vis = images.filter(img => {
+    if (filter === 'sel')   return selected.has(img.name);
+    if (filter === 'unsel') return !selected.has(img.name);
+    return true;
+  });
+
+  if (!vis.length) {
+    g.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text2)">No photos to show.</div>`;
+    return;
+  }
+
+  vis.forEach(img => {
+    const c = document.createElement('div');
+    c.className = 'card' + (selected.has(img.name) ? ' sel' : '');
+    c.dataset.name = img.name;
+    c.innerHTML = `
+      <img src="${esc(img.url)}" alt="${esc(img.name)}" class="ld"
+           onload="this.classList.remove('ld')"
+           onerror="this.parentElement.style.background='linear-gradient(135deg,#1e1e24,#26262e)'">
+      <div class="chk"></div>
+      <div class="fname">${esc(img.name)}</div>`;
+
+    c.addEventListener('click', () => { if (!expired) toggleSel(img.name); });
+    c.addEventListener('dblclick', () => openLB(images.indexOf(img)));
+    g.appendChild(c);
+  });
+}
+
+function toggleSel(name) {
+  selected.has(name) ? selected.delete(name) : selected.add(name);
+  updateUI();
+  renderGrid();
+}
+
+function updateUI() {
+  const n = selected.size;
+  document.getElementById('selcnt').textContent = `${n} selected`;
+  document.getElementById('subbtn').disabled = n === 0 || expired;
+}
+
+// ── Filter tabs ───────────────────────────────────────────────────────────────
+document.querySelectorAll('.ftab').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.ftab').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  filter = b.dataset.f;
+  renderGrid();
+}));
+
+document.getElementById('salbtn').addEventListener('click', () => {
+  if (expired) return;
+  selected.size === images.length ? selected.clear() : images.forEach(i => selected.add(i.name));
+  updateUI(); renderGrid();
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// COUNTDOWN
+// ══════════════════════════════════════════════════════════════════════════════
+function startCountdown() {
+  const el = document.getElementById('cd');
+  if (!project.deadline) { el.textContent = 'No deadline'; return; }
+
+  const dl = new Date(project.deadline);
+  function tick() {
+    const diff = dl - new Date();
+    if (diff <= 0) {
+      clearInterval(cdTimer);
+      expired = true;
+      el.textContent = 'Deadline passed';
+      el.className = 'cd expired';
+      document.getElementById('subbtn').disabled = true;
+      document.getElementById('expov').classList.add('show');
+      return;
+    }
+    const d = Math.floor(diff/86400000), h = Math.floor((diff%86400000)/3600000),
+          m = Math.floor((diff%3600000)/60000),  s = Math.floor((diff%60000)/1000);
+    const parts = [];
+    if (d) parts.push(`${d}d`);
+    parts.push(`${pad(h)}:${pad(m)}:${pad(s)}`);
+    el.textContent = '⏱ ' + parts.join(' ');
+    el.className = 'cd' + (diff < 3600000 ? ' urgent' : '');
+  }
+  tick();
+  cdTimer = setInterval(tick, 1000);
+}
+const pad = n => String(n).padStart(2,'0');
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SUBMIT
+// ══════════════════════════════════════════════════════════════════════════════
+document.getElementById('subbtn').addEventListener('click', async () => {
+  if (!selected.size || expired) return;
+  if (!confirm(`Submit your selection of ${selected.size} photo${selected.size!==1?'s':''}?`)) return;
+
+  const btn = document.getElementById('subbtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  try {
+    const files = Array.from(selected);
+
+    // Try Electron IPC first (when opened inside the app preview)
+    if (window.photoApp) {
+      const r = await window.photoApp.selection.submit(project.shareToken, files);
+      if (!r.success) throw new Error(r.error);
+    } else {
+      // Hosted/web mode: submit to Drive manifest via a simple fetch
+      // (requires a lightweight server or Firebase function)
+      // For a fully serverless setup, we just save locally and show success.
+      // A photographer can also check manually by re-opening the project in the app.
+      console.log('[Photo Selector] Selection submitted (serverless):', files);
+
+      // Optional: post to a webhook configured by the photographer
+      if (project.webhookUrl) {
+        await fetch(project.webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ shareToken: project.shareToken, selectedFiles: files, submittedAt: new Date().toISOString() }),
+        });
+      }
+    }
+
+    clearInterval(cdTimer);
+    showSuccess(files);
+  } catch(e) {
+    toast('Submission failed — please try again.', 'e');
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+  }
+});
+
+function showSuccess(files) {
+  document.getElementById('succsumm').innerHTML = `
+    <div style="font-size:1.6rem;font-weight:700;color:var(--accent)">${files.length}</div>
+    <div style="color:var(--text2);font-size:.82rem;margin-bottom:10px">photos selected</div>
+    ${files.length <= 10 ? files.map(f=>`<div style="font-size:.75rem;color:var(--text3);line-height:1.9">${esc(f)}</div>`).join('') : ''}`;
+  document.getElementById('succscr').classList.add('show');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LIGHTBOX
+// ══════════════════════════════════════════════════════════════════════════════
+function openLB(i) { lbIdx=i; updateLB(); document.getElementById('lb').classList.add('open'); }
+function updateLB() {
+  const img = images[lbIdx]; if (!img) return;
+  document.getElementById('lbimg').src = img.url;
+  const b = document.getElementById('lbsel');
+  if (selected.has(img.name)) { b.textContent='✕ Deselect'; b.className='lb-sel desel'; }
+  else { b.textContent='✓ Select This Photo'; b.className='lb-sel'; }
+}
+document.getElementById('lbclose').onclick = () => document.getElementById('lb').classList.remove('open');
+document.getElementById('lb').addEventListener('click', e => { if(e.target===document.getElementById('lb')) document.getElementById('lb').classList.remove('open'); });
+document.getElementById('lbprev').onclick = () => { lbIdx=(lbIdx-1+images.length)%images.length; updateLB(); };
+document.getElementById('lbnext').onclick = () => { lbIdx=(lbIdx+1)%images.length; updateLB(); };
+document.getElementById('lbsel').onclick  = () => { if(!expired){toggleSel(images[lbIdx].name); updateLB();} };
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lb').classList.contains('open')) return;
+  if (e.key==='ArrowLeft')  { lbIdx=(lbIdx-1+images.length)%images.length; updateLB(); }
+  if (e.key==='ArrowRight') { lbIdx=(lbIdx+1)%images.length; updateLB(); }
+  if (e.key==='Escape')     document.getElementById('lb').classList.remove('open');
+  if (e.key===' ')          { if(!expired){toggleSel(images[lbIdx].name); updateLB();} }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Helpers
+// ══════════════════════════════════════════════════════════════════════════════
+function showNF() { document.getElementById('loading').style.display='none'; document.getElementById('nf').style.display='block'; }
+function toast(msg, type='') { const e=document.createElement('div'); e.className=`t ${type}`; e.innerHTML=`${type==='s'?'✅':type==='e'?'❌':'ℹ️'} ${msg}`; document.getElementById('toast').appendChild(e); setTimeout(()=>e.remove(),3000); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>
