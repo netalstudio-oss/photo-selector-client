@@ -567,7 +567,13 @@ function loadJsonp(url) {
         ? `${manifestEndpoint}?manifestFileId=${encodeURIComponent(manifestId)}`
         : `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(manifestId)}?alt=media`;
       if (manifestEndpoint) {
-        proj = await loadJsonp(manifestUrl);
+        try {
+          proj = await loadJsonp(manifestUrl);
+        } catch (manifestErr) {
+          console.warn('Manifest load failed, using embedded fallback:', manifestErr);
+          if (data) proj = JSON.parse(atob(data));
+          else throw manifestErr;
+        }
       } else {
         const res = await fetch(manifestUrl);
         if (!res.ok) throw new Error(`Manifest load failed: ${res.status}`);
@@ -583,7 +589,7 @@ function loadJsonp(url) {
       return;
     }
 
-    if (!proj || !proj.images) { showNF(); return; }
+    if (!proj || proj.success === false || !proj.images) { showNF(); return; }
     project = proj;
 
     // Build image list with Google Drive thumbnail URLs
