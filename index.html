@@ -399,10 +399,18 @@
 <div class="access-screen" id="access">
   <div class="access-card">
     <h1>Album Access</h1>
-    <p>Enter your email address or phone number to open this shared album.</p>
+    <p>Enter your details to open this shared album.</p>
     <div class="access-field">
-      <label>Email or phone</label>
-      <input id="client-contact-input" autocomplete="email" placeholder="name@example.com or +91 98765 43210">
+      <label>Name</label>
+      <input id="client-name-input" autocomplete="name" placeholder="Client name">
+    </div>
+    <div class="access-field">
+      <label>Gmail</label>
+      <input id="client-email-input" autocomplete="email" placeholder="name@gmail.com">
+    </div>
+    <div class="access-field">
+      <label>Phone Number</label>
+      <input id="client-phone-input" autocomplete="tel" placeholder="+91 98765 43210">
     </div>
     <div class="access-error" id="access-error"></div>
     <button class="btn-sub" id="verify-access-btn" style="width:100%;margin-bottom:14px">Continue</button>
@@ -565,30 +573,76 @@ function enterAlbum() {
   updateUI();
 }
 
-function isValidContact(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || /^\+?[0-9][0-9\s().-]{6,}$/.test(value);
+function getDeviceInfo() {
+  const ua = navigator.userAgent || '';
+  let deviceType = /Mobi|Android|iPhone|iPad|iPod/i.test(ua) ? 'Mobile' : 'Desktop';
+  if (/iPad|Tablet/i.test(ua)) deviceType = 'Tablet';
+
+  let os = 'Unknown OS';
+  if (/Windows/i.test(ua)) os = 'Windows';
+  else if (/Android/i.test(ua)) os = 'Android';
+  else if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS/iPadOS';
+  else if (/Mac OS X/i.test(ua)) os = 'macOS';
+  else if (/Linux/i.test(ua)) os = 'Linux';
+
+  let browser = 'Unknown browser';
+  if (/Edg\//i.test(ua)) browser = 'Edge';
+  else if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) browser = 'Chrome';
+  else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
+  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+
+  return {
+    deviceType,
+    os,
+    browser,
+    platform: navigator.platform || '',
+    language: navigator.language || '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    screen: `${screen.width}x${screen.height}`,
+    userAgent: ua,
+  };
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && /@gmail\.com$/i.test(value);
+}
+
+function isValidPhone(value) {
+  return /^\+?[0-9][0-9\s().-]{6,}$/.test(value);
 }
 
 document.getElementById('verify-access-btn').addEventListener('click', () => {
-  const contact = document.getElementById('client-contact-input').value.trim();
+  const name = document.getElementById('client-name-input').value.trim();
+  const email = document.getElementById('client-email-input').value.trim();
+  const phone = document.getElementById('client-phone-input').value.trim();
   const error = document.getElementById('access-error');
   error.textContent = '';
 
-  if (!isValidContact(contact)) {
-    error.textContent = 'Enter a valid email address or phone number.';
+  if (name.length < 2) {
+    error.textContent = 'Enter the client name.';
+    return;
+  }
+  if (!isValidEmail(email)) {
+    error.textContent = 'Enter a valid Gmail address.';
+    return;
+  }
+  if (!isValidPhone(phone)) {
+    error.textContent = 'Enter a valid phone number.';
     return;
   }
 
   accessVerified = true;
   clientAccess = {
-    contact,
-    email: contact.includes('@') ? contact : '',
-    phone: contact.includes('@') ? '' : contact,
+    name,
+    contact: `${name} | ${email} | ${phone}`,
+    email,
+    phone,
+    device: getDeviceInfo(),
     signedInAt: new Date().toISOString(),
-    source: 'contact',
+    source: 'album-access',
   };
   document.getElementById('client-chip').style.display = 'flex';
-  document.getElementById('client-chip').textContent = `Access recorded for ${contact}`;
+  document.getElementById('client-chip').textContent = `Access recorded for ${name}`;
   enterAlbum();
 });
 
@@ -776,8 +830,8 @@ const pad = n => String(n).padStart(2,'0');
 // ══════════════════════════════════════════════════════════════════════════════
 async function handleSubmit() {
   if (!selected.size || expired) return;
-  if (!accessVerified || !clientAccess?.contact) {
-    toast('Please enter your email or phone number first.', 'e');
+  if (!accessVerified || !clientAccess?.name || !clientAccess?.email || !clientAccess?.phone) {
+    toast('Please enter your name, Gmail and phone number first.', 'e');
     return;
   }
   if (!confirm(`Submit your selection of ${selected.size} photo${selected.size!==1?'s':''}? You cannot change this after submitting.`)) return;
